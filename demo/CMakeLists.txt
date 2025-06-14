@@ -1,0 +1,1 @@
+add_subdirectory(Triangle2D)

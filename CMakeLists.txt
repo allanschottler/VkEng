@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(vkpl CXX)
+project(vkeng CXX)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -15,4 +15,3 @@ find_package(Vulkan REQUIRED)
 
 include_directories(include)
 add_subdirectory(demo)
-add_subdirectory(deps)

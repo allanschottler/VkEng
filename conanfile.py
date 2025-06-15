@@ -1,14 +1,14 @@
 from conan import ConanFile
 from conan.tools.cmake import CMake, cmake_layout
 
-class GLPLConan(ConanFile):
-    name = "vkpl"
+class Conan(ConanFile):
+    name = "vkeng"
     version = "1.0"
     license = "MIT"
     author = "Allan Schöttler"
-    # url = "https://github.com/allanschottler/GLPL"
-    description = "Vulkan Pipelines"
-    topics = ("Vulkan", "Graphics", "C++")
+    url = "https://github.com/allanschottler/VkEng"
+    description = "Vulkan Engine"
+    topics = ("Vulkan", "C++")
     
     settings = "os", "compiler", "build_type", "arch"
     generators = "CMakeDeps", "CMakeToolchain"
@@ -36,5 +36,5 @@ class GLPLConan(ConanFile):
         cmake.build()
 
     def package_info(self):
-        self.cpp_info.libs = ["vkpl"]
+        self.cpp_info.libs = ["vkeng"]
     

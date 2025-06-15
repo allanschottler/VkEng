@@ -1,5 +1,4 @@
 add_executable (Triangle2DDemo main.cpp)
-# target_link_libraries (Triangle2DDemo PRIVATE coruja freijo Boost::boost range-v3::range-v3 glm::glm glad::glad glfw PNG::PNG)
 target_link_libraries (Triangle2DDemo PRIVATE Boost::boost range-v3::range-v3 glm::glm Vulkan::Vulkan glfw)
 
 add_custom_command(TARGET Triangle2DDemo POST_BUILD
@@ -12,7 +11,7 @@ file(GLOB SHADERS
 )
 
 foreach(SHADER ${SHADERS})
-    get_filename_component(FILE_NAME ${SHADER} NAME)
+    get_filename_component(FILE_NAME ${SHADER} NAME_WE)
     set(SPIRV "${CMAKE_CURRENT_BINARY_DIR}/shaders/${FILE_NAME}.spv")
     add_custom_command(
         OUTPUT ${SPIRV}

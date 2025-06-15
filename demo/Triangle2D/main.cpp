@@ -88,8 +88,8 @@ private:
 	// VkDeviceMemory vertexBufferMemory;
 	// VkBuffer indexBuffer;
 	// VkDeviceMemory indexBufferMemory;
-	std::unique_ptr<Buffer<Vertex>> vertexBuffer;
-	std::unique_ptr<Buffer<uint32_t>> indexBuffer;
+	std::unique_ptr<DeviceBuffer<Vertex>> vertexBuffer;
+	std::unique_ptr<DeviceBuffer<uint32_t>> indexBuffer;
 	VkVertexInputBindingDescription vertexBindingDescription;
 	std::vector<VkVertexInputAttributeDescription> vertexAttributeDescriptions;
 
@@ -558,25 +558,7 @@ private:
 	}
 
 	void createUniformBuffer() {
-		// VkBufferCreateInfo bufferInfo = {};
-		// bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-		// bufferInfo.size = sizeof(uniformBufferData);
-		// bufferInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-
-		// vkCreateBuffer(device->logical, &bufferInfo, nullptr, &uniformBuffer);
-
-		// VkMemoryRequirements memReqs;
-		// vkGetBufferMemoryRequirements(device->logical, uniformBuffer, &memReqs);
-
-		// VkMemoryAllocateInfo allocInfo = {};
-		// allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-		// allocInfo.allocationSize = memReqs.size;
-		// getMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, &allocInfo.memoryTypeIndex);
-
-		// vkAllocateMemory(device->logical, &allocInfo, nullptr, &uniformBufferMemory);
-		// vkBindBufferMemory(device->logical, uniformBuffer, uniformBufferMemory, 0);
 		uniformBuffer = std::make_unique<UniformBuffer<decltype(uniformBufferData)>>(*device, uniformBufferData);
-
 		updateUniformData();
 	}
 
@@ -586,22 +568,14 @@ private:
 		long long millis = std::chrono::duration_cast<std::chrono::milliseconds>(timeStart - timeNow).count();
 		float angle = (millis % 4000) / 4000.0f * glm::radians(360.f);
 
-		glm::mat4 modelMatrix;
+		glm::mat4 modelMatrix{1};
 		modelMatrix = glm::rotate(modelMatrix, angle, glm::vec3(0, 0, 1));
 		modelMatrix = glm::translate(modelMatrix, glm::vec3(0.5f / 3.0f, -0.5f / 3.0f, 0.0f));
 
-		// Set up view
 		auto viewMatrix = glm::lookAt(glm::vec3(1, 1, 1), glm::vec3(0, 0, 0), glm::vec3(0, 0, -1));
-
-		// Set up projection
 		auto projMatrix = glm::perspective(glm::radians(70.f), swapChainExtent.width / (float) swapChainExtent.height, 0.1f, 10.0f);
 
 		uniformBufferData.transformationMatrix = projMatrix * viewMatrix * modelMatrix;
-
-		// void* data;
-		// vkMapMemory(device->logical, uniformBufferMemory, 0, sizeof(uniformBufferData), 0, &data);
-		// memcpy(data, &uniformBufferData, sizeof(uniformBufferData));
-		// vkUnmapMemory(device->logical, uniformBufferMemory);
 		uniformBuffer->map(uniformBufferData);
 	}
 

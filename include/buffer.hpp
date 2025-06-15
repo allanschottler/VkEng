@@ -112,6 +112,7 @@ struct HostBuffer : Buffer<T> {
 
     template<class It, class Sentinel = It>
     HostBuffer(Device& device, It begin, Sentinel end, VkBufferUsageFlags usage)
+        requires(std::is_same_v<typename std::iterator_traits<It>::value_type, value_t>)
         : Buffer<T>(device, std::distance(begin, end), usage, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) 
     { map(begin, end); }
     
@@ -119,7 +120,9 @@ struct HostBuffer : Buffer<T> {
         : HostBuffer<T>(device, data.begin(), data.end(), usage) {}
 
     template<class It, class Sentinel = It>
-    void map(It begin, Sentinel end) {
+    void map(It begin, Sentinel end) 
+        requires(std::is_same_v<typename std::iterator_traits<It>::value_type, value_t>) 
+    {
         if(static_cast<std::size_t>(std::distance(begin, end)) != base::size)
             throw std::runtime_error("Size mismatch when mapping host buffer");
         if(begin == end)
@@ -140,9 +143,8 @@ struct StagingBuffer : HostBuffer<T> {
 template<class T>
 struct UniformBuffer : HostBuffer<T> {
     UniformBuffer(Device& device, const T& data)
-        : HostBuffer<T>(device, {data}, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT) {}
+        : HostBuffer<T>(device, &data, &data + 1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT) {}
     
-    void map(const T& data) {
-       HostBuffer<T>::map(&data, &data + 1);
-    }
+    void map(const T& data) 
+    { HostBuffer<T>::map(&data, &data + 1); }
 };

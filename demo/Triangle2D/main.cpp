@@ -96,8 +96,9 @@ private:
 	struct {
 		glm::mat4 transformationMatrix;
 	} uniformBufferData;
-	VkBuffer uniformBuffer;
-	VkDeviceMemory uniformBufferMemory;
+	// VkBuffer uniformBuffer;
+	// VkDeviceMemory uniformBufferMemory;
+	std::unique_ptr<UniformBuffer<decltype(uniformBufferData)>> uniformBuffer;
 	VkDescriptorSetLayout descriptorSetLayout;
 	VkDescriptorPool descriptorPool;
 	VkDescriptorSet descriptorSet;
@@ -197,8 +198,9 @@ private:
 
 			// Clean up uniform buffer related objects
 			vkDestroyDescriptorPool(device->logical, descriptorPool, nullptr);
-			vkDestroyBuffer(device->logical, uniformBuffer, nullptr);
-			vkFreeMemory(device->logical, uniformBufferMemory, nullptr);
+			// vkDestroyBuffer(device->logical, uniformBuffer, nullptr);
+			// vkFreeMemory(device->logical, uniformBufferMemory, nullptr);
+			uniformBuffer.reset();
 
 			// Buffers must be destroyed after no command buffers are referring to them anymore
 			// vkDestroyBuffer(device->logical, vertexBuffer, nullptr);
@@ -481,26 +483,8 @@ private:
 			{ { -0.5f,  0.5f,  0.0f }, { 0.0f, 1.0f, 0.0f } },
 			{ {  0.5f,  0.5f,  0.0f }, { 0.0f, 0.0f, 1.0f } }
 		};
-		// uint32_t verticesSize = (uint32_t) (vertices.size() * sizeof(vertices[0]));
-
 		// Setup indices
 		std::vector<uint32_t> indices = { 0, 1, 2 };
-		// uint32_t indicesSize = (uint32_t) (indices.size() * sizeof(indices[0]));
-
-		// VkMemoryAllocateInfo memAlloc = {};
-		// memAlloc.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-		// VkMemoryRequirements memReqs;
-		// void* data;
-
-		// struct StagingBuffer {
-			// VkDeviceMemory memory;
-			// VkBuffer buffer;
-		// };
-
-		// struct {
-			// StagingBuffer vertices;
-			// StagingBuffer indices;
-		// } stagingBuffers;
 
 		// Allocate command buffer for copy operation
 		VkCommandBufferAllocateInfo cmdBufInfo = {};
@@ -513,68 +497,14 @@ private:
 		vkAllocateCommandBuffers(device->logical, &cmdBufInfo, &copyCommandBuffer);
 		std::cout << "allocated command buffer for vertex buffer copy" << std::endl;
 
-		auto stage_vertices = HostBuffer<Vertex>(*device, vertices);
+		auto stage_vertices = StagingBuffer<Vertex>(*device, vertices);
 		std::cout << "created host buffer for vertices" << std::endl;
 		vertexBuffer = std::make_unique<DeviceBuffer<Vertex>>(*device, vertices.size(), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
 		std::cout << "created device buffer for vertices" << std::endl;
-		auto stage_indices = HostBuffer<uint32_t>(*device, indices);
+		auto stage_indices = StagingBuffer<uint32_t>(*device, indices);
 		std::cout << "created host buffer for indices" << std::endl;
 		indexBuffer = std::make_unique<DeviceBuffer<uint32_t>>(*device, indices.size(), VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
 		std::cout << "created device buffer for indices" << std::endl;
-
-		// First copy vertices to host accessible vertex buffer memory
-		// VkBufferCreateInfo vertexBufferInfo = {};
-		// vertexBufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-		// vertexBufferInfo.size = verticesSize;
-		// vertexBufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-
-		// vkCreateBuffer(device, &vertexBufferInfo, nullptr, &stagingBuffers.vertices.buffer);
-
-		// vkGetBufferMemoryRequirements(device, stagingBuffers.vertices.buffer, &memReqs);
-		// memAlloc.allocationSize = memReqs.size;
-		// getMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, &memAlloc.memoryTypeIndex);
-		// vkAllocateMemory(device, &memAlloc, nullptr, &stagingBuffers.vertices.memory);
-
-		// vkMapMemory(device, stagingBuffers.vertices.memory, 0, verticesSize, 0, &data);
-		// memcpy(data, vertices.data(), verticesSize);
-		// vkUnmapMemory(device, stagingBuffers.vertices.memory);
-		// vkBindBufferMemory(device, stagingBuffers.vertices.buffer, stagingBuffers.vertices.memory, 0);
-
-		// // Then allocate a gpu only buffer for vertices
-		// vertexBufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-		// vkCreateBuffer(device, &vertexBufferInfo, nullptr, &vertexBuffer);
-		// vkGetBufferMemoryRequirements(device, vertexBuffer, &memReqs);
-		// memAlloc.allocationSize = memReqs.size;
-		// getMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &memAlloc.memoryTypeIndex);
-		// vkAllocateMemory(device, &memAlloc, nullptr, &vertexBufferMemory);
-		// vkBindBufferMemory(device, vertexBuffer, vertexBufferMemory, 0);
-
-		// // Next copy indices to host accessible index buffer memory
-		// VkBufferCreateInfo indexBufferInfo = {};
-		// indexBufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-		// indexBufferInfo.size = indicesSize;
-		// indexBufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-
-		// vkCreateBuffer(device, &indexBufferInfo, nullptr, &stagingBuffers.indices.buffer);
-		// vkGetBufferMemoryRequirements(device, stagingBuffers.indices.buffer, &memReqs);
-		// memAlloc.allocationSize = memReqs.size;
-		// getMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, &memAlloc.memoryTypeIndex);
-		// vkAllocateMemory(device, &memAlloc, nullptr, &stagingBuffers.indices.memory);
-		// vkMapMemory(device, stagingBuffers.indices.memory, 0, indicesSize, 0, &data);
-		// memcpy(data, indices.data(), indicesSize);
-		// vkUnmapMemory(device, stagingBuffers.indices.memory);
-		// vkBindBufferMemory(device, stagingBuffers.indices.buffer, stagingBuffers.indices.memory, 0);
-
-		// // And allocate another gpu only buffer for indices
-		// indexBufferInfo.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-		// vkCreateBuffer(device, &indexBufferInfo, nullptr, &indexBuffer);
-		// vkGetBufferMemoryRequirements(device, indexBuffer, &memReqs);
-		// memAlloc.allocationSize = memReqs.size;
-		// getMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &memAlloc.memoryTypeIndex);
-		// vkAllocateMemory(device, &memAlloc, nullptr, &indexBufferMemory);
-		// vkBindBufferMemory(device, indexBuffer, indexBufferMemory, 0);
-
-		std::cout << "created staging buffers for vertices and indices" << std::endl;
 
 		// Now copy data from host visible buffer to gpu only buffer
 		VkCommandBufferBeginInfo bufferBeginInfo = {};
@@ -628,23 +558,24 @@ private:
 	}
 
 	void createUniformBuffer() {
-		VkBufferCreateInfo bufferInfo = {};
-		bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-		bufferInfo.size = sizeof(uniformBufferData);
-		bufferInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+		// VkBufferCreateInfo bufferInfo = {};
+		// bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+		// bufferInfo.size = sizeof(uniformBufferData);
+		// bufferInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
 
-		vkCreateBuffer(device->logical, &bufferInfo, nullptr, &uniformBuffer);
+		// vkCreateBuffer(device->logical, &bufferInfo, nullptr, &uniformBuffer);
 
-		VkMemoryRequirements memReqs;
-		vkGetBufferMemoryRequirements(device->logical, uniformBuffer, &memReqs);
+		// VkMemoryRequirements memReqs;
+		// vkGetBufferMemoryRequirements(device->logical, uniformBuffer, &memReqs);
 
-		VkMemoryAllocateInfo allocInfo = {};
-		allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-		allocInfo.allocationSize = memReqs.size;
-		getMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, &allocInfo.memoryTypeIndex);
+		// VkMemoryAllocateInfo allocInfo = {};
+		// allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+		// allocInfo.allocationSize = memReqs.size;
+		// getMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, &allocInfo.memoryTypeIndex);
 
-		vkAllocateMemory(device->logical, &allocInfo, nullptr, &uniformBufferMemory);
-		vkBindBufferMemory(device->logical, uniformBuffer, uniformBufferMemory, 0);
+		// vkAllocateMemory(device->logical, &allocInfo, nullptr, &uniformBufferMemory);
+		// vkBindBufferMemory(device->logical, uniformBuffer, uniformBufferMemory, 0);
+		uniformBuffer = std::make_unique<UniformBuffer<decltype(uniformBufferData)>>(*device, uniformBufferData);
 
 		updateUniformData();
 	}
@@ -667,10 +598,11 @@ private:
 
 		uniformBufferData.transformationMatrix = projMatrix * viewMatrix * modelMatrix;
 
-		void* data;
-		vkMapMemory(device->logical, uniformBufferMemory, 0, sizeof(uniformBufferData), 0, &data);
-		memcpy(data, &uniformBufferData, sizeof(uniformBufferData));
-		vkUnmapMemory(device->logical, uniformBufferMemory);
+		// void* data;
+		// vkMapMemory(device->logical, uniformBufferMemory, 0, sizeof(uniformBufferData), 0, &data);
+		// memcpy(data, &uniformBufferData, sizeof(uniformBufferData));
+		// vkUnmapMemory(device->logical, uniformBufferMemory);
+		uniformBuffer->map(uniformBufferData);
 	}
 
 	// Find device memory that is supported by the requirements (typeBits) and meets the desired properties
@@ -1163,7 +1095,7 @@ private:
 
 		// Update descriptor set with uniform binding
 		VkDescriptorBufferInfo descriptorBufferInfo = {};
-		descriptorBufferInfo.buffer = uniformBuffer;
+		descriptorBufferInfo.buffer = uniformBuffer->buffer;
 		descriptorBufferInfo.offset = 0;
 		descriptorBufferInfo.range = sizeof(uniformBufferData);
 

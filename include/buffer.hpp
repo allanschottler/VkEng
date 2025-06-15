@@ -111,33 +111,38 @@ struct HostBuffer : Buffer<T> {
     using value_t = typename base::value_t;
 
     template<class It, class Sentinel = It>
-    HostBuffer(Device& device, It begin, Sentinel end)
-        : Buffer<T>(device, std::distance(begin, end),
-            VK_BUFFER_USAGE_TRANSFER_SRC_BIT, 
-            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) 
-    {
+    HostBuffer(Device& device, It begin, Sentinel end, VkBufferUsageFlags usage)
+        : Buffer<T>(device, std::distance(begin, end), usage, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) 
+    { map(begin, end); }
+    
+    HostBuffer(Device& device, const std::vector<T>& data, VkBufferUsageFlags usage)
+        : HostBuffer<T>(device, data.begin(), data.end(), usage) {}
+
+    template<class It, class Sentinel = It>
+    void map(It begin, Sentinel end) {
+        if(static_cast<std::size_t>(std::distance(begin, end)) != base::size)
+            throw std::runtime_error("Size mismatch when mapping host buffer");
         if(begin == end)
             throw std::runtime_error("Cannot create host buffer with empty range");
-        std::cout << "mapping host buffer of size " << base::size << std::endl;
         void* mappedData;
-        vkMapMemory(device.logical, base::memory, 0, sizeof(value_t) * base::size, 0, &mappedData);
+        vkMapMemory(base::device.logical, base::memory, 0, sizeof(value_t) * base::size, 0, &mappedData);
         memcpy(mappedData, &*begin, sizeof(value_t) * base::size);
-        vkUnmapMemory(device.logical, base::memory);
-        std::cout << "mapped host buffer of size " << base::size << std::endl;
+        vkUnmapMemory(base::device.logical, base::memory);
     }
-    HostBuffer(Device& device, const std::vector<T>& data)
-        : HostBuffer<T>(device, data.begin(), data.end()) 
-    {
-        std::cout << "created host buffer from vector of size " << data.size() << std::endl;
-    }
+};
 
-    // template<class It, class Sentinel = It>
-    // void map(It begin, Sentinel end) {
-    //     if(static_cast<std::size_t>(std::distance(begin, end)) != this->size)
-    //         throw std::runtime_error("Size mismatch when mapping host buffer");
-    //     void* mappedData;
-    //     vkMapMemory(this->device.logical, this->memory, 0, sizeof(T) * this->size, 0, &mappedData);
-    //     memcpy(mappedData, &*begin, this->size);
-    //     vkUnmapMemory(this->device.logical, this->memory);
-    // }
+template<class T>
+struct StagingBuffer : HostBuffer<T> {
+    StagingBuffer(Device& device, const std::vector<T>& data)
+        : HostBuffer<T>(device, data, VK_BUFFER_USAGE_TRANSFER_SRC_BIT) {}
+};
+
+template<class T>
+struct UniformBuffer : HostBuffer<T> {
+    UniformBuffer(Device& device, const T& data)
+        : HostBuffer<T>(device, {data}, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT) {}
+    
+    void map(const T& data) {
+       HostBuffer<T>::map(&data, &data + 1);
+    }
 };

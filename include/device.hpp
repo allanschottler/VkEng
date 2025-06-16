@@ -4,7 +4,7 @@
 #include <vector>
 
 struct Device {
-    VkInstance& instance;
+    Instance& instance;
 	VkSurfaceKHR& windowSurface;
     VkDevice logical;
     VkPhysicalDevice physical;
@@ -14,7 +14,7 @@ struct Device {
     uint32_t graphicsQueueFamily;
 	uint32_t presentQueueFamily;
 
-    Device(VkInstance& instance, VkSurfaceKHR& windowSurface)
+    Device(Instance& instance, VkSurfaceKHR& windowSurface)
         : instance(instance)
         , windowSurface(windowSurface)
     {
@@ -78,13 +78,13 @@ struct Device {
 		// Try to find 1 Vulkan supported device
 		// Note: perhaps refactor to loop through devices and find first one that supports all required features and extensions
 		uint32_t deviceCount = 0;
-		if (vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr) != VK_SUCCESS || deviceCount == 0) {
+		if (vkEnumeratePhysicalDevices(instance.instance, &deviceCount, nullptr) != VK_SUCCESS || deviceCount == 0) {
 			std::cerr << "failed to get number of physical devices" << std::endl;
 			exit(1);
 		}
 
 		deviceCount = 1;
-		VkResult res = vkEnumeratePhysicalDevices(instance, &deviceCount, &physical);
+		VkResult res = vkEnumeratePhysicalDevices(instance.instance, &deviceCount, &physical);
 		if (res != VK_SUCCESS && res != VK_INCOMPLETE) {
 			std::cerr << "enumerating physical devices failed!" << std::endl;
 			exit(1);

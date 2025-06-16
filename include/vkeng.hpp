@@ -1,7 +1,9 @@
 #pragma once
+#include "Instance.hpp"
 #include "Device.hpp"
 #include "Buffer.hpp"
 #include "SwapChain.hpp"
 #include "RenderPass.hpp"
 #include "ImageView.hpp"
 #include "FrameBuffer.hpp"
+#include "Shader.hpp"

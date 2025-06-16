@@ -120,7 +120,7 @@ private:
 	VkPipeline graphicsPipeline;
 	VkPipelineLayout pipelineLayout;
 
-	VkCommandPool commandPool;
+	// VkCommandPool commandPool;
 	std::vector<VkCommandBuffer> graphicsCommandBuffers;
 
 	// uint32_t graphicsQueueFamily;
@@ -140,7 +140,7 @@ private:
 		// createLogicalDevice();
 		device = std::make_unique<Device>(*instance, windowSurface);
 		createSemaphores();
-		createCommandPool();
+		// createCommandPool();
 		createVertexBuffer();
 		uniformBuffer = std::make_unique<UniformBuffer<decltype(uniformBufferData)>>(*device, uniformBufferData);
 		// createUniformBuffer();
@@ -203,7 +203,7 @@ private:
 	void cleanup(bool fullClean) {
 		vkDeviceWaitIdle(device->logical);
 
-		vkFreeCommandBuffers(device->logical, commandPool, (uint32_t) graphicsCommandBuffers.size(), graphicsCommandBuffers.data());
+		vkFreeCommandBuffers(device->logical, device->commandPool, (uint32_t) graphicsCommandBuffers.size(), graphicsCommandBuffers.data());
 
 		vkDestroyPipeline(device->logical, graphicsPipeline, nullptr);
 		// vkDestroyRenderPass(device->logical, swapChain->renderPass, nullptr);
@@ -223,7 +223,7 @@ private:
 			vkDestroySemaphore(device->logical, imageAvailableSemaphore, nullptr);
 			vkDestroySemaphore(device->logical, renderingFinishedSemaphore, nullptr);
 
-			vkDestroyCommandPool(device->logical, commandPool, nullptr);
+			// vkDestroyCommandPool(device->logical, commandPool, nullptr);
 
 			// Clean up uniform buffer related objects
 			vkDestroyDescriptorPool(device->logical, descriptorPool, nullptr);
@@ -317,19 +317,19 @@ private:
 		}
 	}
 
-	void createCommandPool() {
-		// Create graphics command pool
-		VkCommandPoolCreateInfo poolCreateInfo = {};
-		poolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-		poolCreateInfo.queueFamilyIndex = device->graphicsQueueFamily;
+	// void createCommandPool() {
+	// 	// Create graphics command pool
+	// 	VkCommandPoolCreateInfo poolCreateInfo = {};
+	// 	poolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+	// 	poolCreateInfo.queueFamilyIndex = device->graphicsQueueFamily;
 
-		if (vkCreateCommandPool(device->logical, &poolCreateInfo, nullptr, &commandPool) != VK_SUCCESS) {
-			std::cerr << "failed to create command queue for graphics queue family" << std::endl;
-			exit(1);
-		} else {
-			std::cout << "created command pool for graphics queue family" << std::endl;
-		}
-	}
+	// 	if (vkCreateCommandPool(device->logical, &poolCreateInfo, nullptr, &commandPool) != VK_SUCCESS) {
+	// 		std::cerr << "failed to create command queue for graphics queue family" << std::endl;
+	// 		exit(1);
+	// 	} else {
+	// 		std::cout << "created command pool for graphics queue family" << std::endl;
+	// 	}
+	// }
 	
 	void createVertexBuffer() {
 		// Setup vertices
@@ -344,7 +344,7 @@ private:
 		// Allocate command buffer for copy operation
 		VkCommandBufferAllocateInfo cmdBufInfo = {};
 		cmdBufInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-		cmdBufInfo.commandPool = commandPool;
+		cmdBufInfo.commandPool = device->commandPool;
 		cmdBufInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 		cmdBufInfo.commandBufferCount = 1;
 
@@ -381,7 +381,7 @@ private:
 		vkQueueSubmit(device->graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
 		vkQueueWaitIdle(device->graphicsQueue);
 
-		vkFreeCommandBuffers(device->logical, commandPool, 1, &copyCommandBuffer);
+		vkFreeCommandBuffers(device->logical, device->commandPool, 1, &copyCommandBuffer);
 
 		// Binding and attribute descriptions
 		vertexBindingDescription.binding = 0;
@@ -669,7 +669,7 @@ private:
 
 		VkCommandBufferAllocateInfo allocInfo = {};
 		allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-		allocInfo.commandPool = commandPool;
+		allocInfo.commandPool = device->commandPool;
 		allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 		allocInfo.commandBufferCount = (uint32_t) swapChain->images.size();
 

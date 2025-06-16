@@ -13,6 +13,7 @@ struct Device {
     VkQueue presentQueue;
     uint32_t graphicsQueueFamily;
 	uint32_t presentQueueFamily;
+	VkCommandPool commandPool;
 
     Device(Instance& instance, VkSurfaceKHR& windowSurface)
         : instance(instance)
@@ -68,9 +69,22 @@ struct Device {
 		std::cout << "acquired graphics and presentation queues" << std::endl;
 
 		vkGetPhysicalDeviceMemoryProperties(physical, &memoryProperties);
+
+		// Create graphics command pool
+		VkCommandPoolCreateInfo poolCreateInfo = {};
+		poolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+		poolCreateInfo.queueFamilyIndex = graphicsQueueFamily;
+
+		if (vkCreateCommandPool(logical, &poolCreateInfo, nullptr, &commandPool) != VK_SUCCESS) {
+			std::cerr << "failed to create command queue for graphics queue family" << std::endl;
+			exit(1);
+		} else {
+			std::cout << "created command pool for graphics queue family" << std::endl;
+		}
     }
 
     ~Device() {
+		vkDestroyCommandPool(logical, commandPool, nullptr);
         vkDestroyDevice(logical, nullptr);
     }
 

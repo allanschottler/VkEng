@@ -341,47 +341,53 @@ private:
 		// Setup indices
 		std::vector<uint32_t> indices = { 0, 1, 2 };
 
-		// Allocate command buffer for copy operation
-		VkCommandBufferAllocateInfo cmdBufInfo = {};
-		cmdBufInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-		cmdBufInfo.commandPool = device->commandPool;
-		cmdBufInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-		cmdBufInfo.commandBufferCount = 1;
-
-		VkCommandBuffer copyCommandBuffer;
-		vkAllocateCommandBuffers(device->logical, &cmdBufInfo, &copyCommandBuffer);
-		std::cout << "allocated command buffer for vertex buffer copy" << std::endl;
-
+		
 		auto stage_vertices = StagingBuffer<Vertex>(*device, vertices);
 		vertexBuffer = std::make_unique<DeviceBuffer<Vertex>>(*device, vertices.size(), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
 		auto stage_indices = StagingBuffer<uint32_t>(*device, indices);
 		indexBuffer = std::make_unique<DeviceBuffer<uint32_t>>(*device, indices.size(), VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
+		
+		CommandBuffer copyCommandBuffer(*device, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+			CmdCopyBuffer(stage_vertices, *vertexBuffer), 
+			CmdCopyBuffer(stage_indices, *indexBuffer));
 
+		// // Allocate command buffer for copy operation
+		// VkCommandBufferAllocateInfo cmdBufInfo = {};
+		// cmdBufInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+		// cmdBufInfo.commandPool = device->commandPool;
+		// cmdBufInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+		// cmdBufInfo.commandBufferCount = 1;
+
+		// VkCommandBuffer copyCommandBuffer;
+		// vkAllocateCommandBuffers(device->logical, &cmdBufInfo, &copyCommandBuffer);
+		// std::cout << "allocated command buffer for vertex buffer copy" << std::endl;
+		
 		// Now copy data from host visible buffer to gpu only buffer
-		VkCommandBufferBeginInfo bufferBeginInfo = {};
-		bufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		bufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+		// VkCommandBufferBeginInfo bufferBeginInfo = {};
+		// bufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		// bufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-		vkBeginCommandBuffer(copyCommandBuffer, &bufferBeginInfo);
+		// vkBeginCommandBuffer(copyCommandBuffer.commandBuffer, &bufferBeginInfo);
 
-		VkBufferCopy copyRegion = {};
-		copyRegion.size = vertices.size() * sizeof(vertices[0]);
-		vkCmdCopyBuffer(copyCommandBuffer, stage_vertices.buffer, vertexBuffer->buffer, 1, &copyRegion);
-		copyRegion.size = indices.size() * sizeof(indices[0]);
-		vkCmdCopyBuffer(copyCommandBuffer, stage_indices.buffer, indexBuffer->buffer, 1, &copyRegion);
+		// VkBufferCopy copyRegion = {};
+		// copyRegion.size = vertices.size() * sizeof(vertices[0]);
+		// vkCmdCopyBuffer(copyCommandBuffer.commandBuffer, stage_vertices.buffer, vertexBuffer->buffer, 1, &copyRegion);
+		// copyRegion.size = indices.size() * sizeof(indices[0]);
+		// vkCmdCopyBuffer(copyCommandBuffer.commandBuffer, stage_indices.buffer, indexBuffer->buffer, 1, &copyRegion);
 
-		vkEndCommandBuffer(copyCommandBuffer);
+		// vkEndCommandBuffer(copyCommandBuffer.commandBuffer);
+
 
 		// Submit to queue
 		VkSubmitInfo submitInfo = {};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 		submitInfo.commandBufferCount = 1;
-		submitInfo.pCommandBuffers = &copyCommandBuffer;
+		submitInfo.pCommandBuffers = &copyCommandBuffer.commandBuffer;
 
 		vkQueueSubmit(device->graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
 		vkQueueWaitIdle(device->graphicsQueue);
 
-		vkFreeCommandBuffers(device->logical, device->commandPool, 1, &copyCommandBuffer);
+		// vkFreeCommandBuffers(device->logical, device->commandPool, 1, &copyCommandBuffer);
 
 		// Binding and attribute descriptions
 		vertexBindingDescription.binding = 0;

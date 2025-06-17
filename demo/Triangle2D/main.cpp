@@ -122,7 +122,8 @@ private:
 	std::unique_ptr<GraphicsPipeline> graphicsPipeline;
 
 	// VkCommandPool commandPool;
-	std::vector<VkCommandBuffer> graphicsCommandBuffers;
+	// std::vector<VkCommandBuffer> graphicsCommandBuffers;
+	std::vector<std::unique_ptr<CommandBufferBase>> graphicsCommandBuffers;
 
 	// uint32_t graphicsQueueFamily;
 	// uint32_t presentQueueFamily;
@@ -205,47 +206,23 @@ private:
 	void cleanup(bool fullClean) {
 		vkDeviceWaitIdle(device->logical);
 
-		vkFreeCommandBuffers(device->logical, device->commandPool, (uint32_t) graphicsCommandBuffers.size(), graphicsCommandBuffers.data());
-
+		// vkFreeCommandBuffers(device->logical, device->commandPool, (uint32_t) graphicsCommandBuffers.size(), graphicsCommandBuffers.data());
+		graphicsCommandBuffers.clear();
 		graphicsPipeline.reset();
-		// vkDestroyPipeline(device->logical, graphicsPipeline, nullptr);
-		// vkDestroyRenderPass(device->logical, swapChain->renderPass, nullptr);
 		renderPass.reset();
 		framebuffers.clear();
 		imageViews.clear();
-
-		// vkDestroyDescriptorSetLayout(device->logical, descriptorSetLayout, nullptr);
 		
 		if (fullClean) {
 			vkDestroySemaphore(device->logical, imageAvailableSemaphore, nullptr);
 			vkDestroySemaphore(device->logical, renderingFinishedSemaphore, nullptr);
 
-			// vkDestroyCommandPool(device->logical, commandPool, nullptr);
-
-			// Clean up uniform buffer related objects
-			// vkDestroyDescriptorPool(device->logical, descriptorPool, nullptr);
-			// vkDestroyBuffer(device->logical, uniformBuffer, nullptr);
-			// vkFreeMemory(device->logical, uniformBufferMemory, nullptr);
 			uniformBuffer.reset();
-
-			// Buffers must be destroyed after no command buffers are referring to them anymore
-			// vkDestroyBuffer(device->logical, vertexBuffer, nullptr);
-			// vkFreeMemory(device->logical, vertexBufferMemory, nullptr);
-			// vkDestroyBuffer(device->logical, indexBuffer, nullptr);
-			// vkFreeMemory(device->logical, indexBufferMemory, nullptr);
 			vertexBuffer.reset();
 			indexBuffer.reset();
-
-			// Note: implicitly destroys images (in fact, we're not allowed to do that explicitly)
-			// vkDestroySwapchainKHR(device->logical, swapChain->current, nullptr);
 			swapChain.reset();
-
-			// vkDestroyDevice(device, nullptr);
 			device.reset();
-
 			vkDestroySurfaceKHR(instance->instance, windowSurface, nullptr);
-
-			// vkDestroyInstance(instance, nullptr);
 			instance.reset();
 		}
 	}
@@ -287,9 +264,10 @@ private:
 		auto stage_indices = StagingBuffer<uint32_t>(*device, indices);
 		indexBuffer = std::make_unique<DeviceBuffer<uint32_t>>(*device, indices.size(), VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
 		
-		CommandBuffer copyCommandBuffer(*device, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+		auto copyCommandBuffer = CommandBuffer(*device,
 			CmdCopyBuffer(stage_vertices, *vertexBuffer), 
 			CmdCopyBuffer(stage_indices, *indexBuffer));
+		copyCommandBuffer.use(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
 		// Submit to queue
 		VkSubmitInfo submitInfo = {};
@@ -333,207 +311,6 @@ private:
 		uniformBuffer->map(uniformBufferData);
 	}
 
-	VkShaderModule createShaderModule(const std::string& filename) { 
-		std::ifstream file(filename, std::ios::ate | std::ios::binary);
-		if (!file.is_open()) {
-			std::cerr << "Failed to open shader file: " << filename << std::endl;
-			std::exit(-1);
-		}
-		std::vector<char> fileBytes(file.tellg());
-		file.seekg(0, std::ios::beg);
-		file.read(fileBytes.data(), fileBytes.size());
-		file.close();
-
-		VkShaderModuleCreateInfo createInfo = {};
-		createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-		createInfo.codeSize = fileBytes.size();
-		createInfo.pCode = (uint32_t*) fileBytes.data();
-
-		VkShaderModule shaderModule;
-		if (vkCreateShaderModule(device->logical, &createInfo, nullptr, &shaderModule) != VK_SUCCESS) {
-			std::cerr << "failed to create shader module for " << filename << std::endl;
-			exit(1);
-		}
-
-		std::cout << "created shader module for " << filename << std::endl;
-
-		return shaderModule;
-	}
-
-	// void createGraphicsPipeline() {
-	// 	auto vertexShader = VertexShader(*device, "shaders/Pass.spv");
-	// 	auto fragmentShader = FragmentShader(*device, "shaders/SolidColor.spv");
-
-	// 	VkPipelineShaderStageCreateInfo shaderStages[] = { vertexShader.pssCreateInfo, fragmentShader.pssCreateInfo };
-
-	// 	// Describe vertex input
-	// 	VkPipelineVertexInputStateCreateInfo vertexInputCreateInfo = {};
-	// 	vertexInputCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-	// 	vertexInputCreateInfo.vertexBindingDescriptionCount = 1;
-	// 	vertexInputCreateInfo.pVertexBindingDescriptions = &vertexBindingDescription;
-	// 	vertexInputCreateInfo.vertexAttributeDescriptionCount = 2;
-	// 	vertexInputCreateInfo.pVertexAttributeDescriptions = vertexAttributeDescriptions.data();
-
-	// 	// Describe input assembly
-	// 	VkPipelineInputAssemblyStateCreateInfo inputAssemblyCreateInfo = {};
-	// 	inputAssemblyCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-	// 	inputAssemblyCreateInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-	// 	inputAssemblyCreateInfo.primitiveRestartEnable = VK_FALSE;
-
-	// 	// Describe viewport and scissor
-	// 	VkViewport viewport = {};
-	// 	viewport.x = 0.0f;
-	// 	viewport.y = 0.0f;
-	// 	viewport.width = (float) swapChain->extent.width;
-	// 	viewport.height = (float) swapChain->extent.height;
-	// 	viewport.minDepth = 0.0f;
-	// 	viewport.maxDepth = 1.0f;
-
-	// 	VkRect2D scissor = {};
-	// 	scissor.offset.x = 0;
-	// 	scissor.offset.y = 0;
-	// 	scissor.extent.width = swapChain->extent.width;
-	// 	scissor.extent.height = swapChain->extent.height;
-
-	// 	// Note: scissor test is always enabled (although dynamic scissor is possible)
-	// 	// Number of viewports must match number of scissors
-	// 	VkPipelineViewportStateCreateInfo viewportCreateInfo = {};
-	// 	viewportCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-	// 	viewportCreateInfo.viewportCount = 1;
-	// 	viewportCreateInfo.pViewports = &viewport;
-	// 	viewportCreateInfo.scissorCount = 1;
-	// 	viewportCreateInfo.pScissors = &scissor;
-
-	// 	// Describe rasterization
-	// 	// Note: depth bias and using polygon modes other than fill require changes to logical device creation (device features)
-	// 	VkPipelineRasterizationStateCreateInfo rasterizationCreateInfo = {};
-	// 	rasterizationCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-	// 	rasterizationCreateInfo.depthClampEnable = VK_FALSE;
-	// 	rasterizationCreateInfo.rasterizerDiscardEnable = VK_FALSE;
-	// 	rasterizationCreateInfo.polygonMode = VK_POLYGON_MODE_FILL;
-	// 	rasterizationCreateInfo.cullMode = VK_CULL_MODE_BACK_BIT;
-	// 	rasterizationCreateInfo.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-	// 	rasterizationCreateInfo.depthBiasEnable = VK_FALSE;
-	// 	rasterizationCreateInfo.depthBiasConstantFactor = 0.0f;
-	// 	rasterizationCreateInfo.depthBiasClamp = 0.0f;
-	// 	rasterizationCreateInfo.depthBiasSlopeFactor = 0.0f;
-	// 	rasterizationCreateInfo.lineWidth = 1.0f;
-
-	// 	// Describe multisampling
-	// 	// Note: using multisampling also requires turning on device features
-	// 	VkPipelineMultisampleStateCreateInfo multisampleCreateInfo = {};
-	// 	multisampleCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-	// 	multisampleCreateInfo.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-	// 	multisampleCreateInfo.sampleShadingEnable = VK_FALSE;
-	// 	multisampleCreateInfo.minSampleShading = 1.0f;
-	// 	multisampleCreateInfo.alphaToCoverageEnable = VK_FALSE;
-	// 	multisampleCreateInfo.alphaToOneEnable = VK_FALSE;
-
-	// 	// Describing color blending
-	// 	// Note: all paramaters except blendEnable and colorWriteMask are irrelevant here
-	// 	VkPipelineColorBlendAttachmentState colorBlendAttachmentState = {};
-	// 	colorBlendAttachmentState.blendEnable = VK_FALSE;
-	// 	colorBlendAttachmentState.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
-	// 	colorBlendAttachmentState.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
-	// 	colorBlendAttachmentState.colorBlendOp = VK_BLEND_OP_ADD;
-	// 	colorBlendAttachmentState.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-	// 	colorBlendAttachmentState.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
-	// 	colorBlendAttachmentState.alphaBlendOp = VK_BLEND_OP_ADD;
-	// 	colorBlendAttachmentState.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-
-	// 	// Note: all attachments must have the same values unless a device feature is enabled
-	// 	VkPipelineColorBlendStateCreateInfo colorBlendCreateInfo = {};
-	// 	colorBlendCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-	// 	colorBlendCreateInfo.logicOpEnable = VK_FALSE;
-	// 	colorBlendCreateInfo.logicOp = VK_LOGIC_OP_COPY;
-	// 	colorBlendCreateInfo.attachmentCount = 1;
-	// 	colorBlendCreateInfo.pAttachments = &colorBlendAttachmentState;
-	// 	colorBlendCreateInfo.blendConstants[0] = 0.0f;
-	// 	colorBlendCreateInfo.blendConstants[1] = 0.0f;
-	// 	colorBlendCreateInfo.blendConstants[2] = 0.0f;
-	// 	colorBlendCreateInfo.blendConstants[3] = 0.0f;
-
-	// 	// Describe pipeline layout
-	// 	// Note: this describes the mapping between memory and shader resources (descriptor sets)
-	// 	// This is for uniform buffers and samplers
-	// 	VkDescriptorSetLayoutBinding layoutBinding = {};
-	// 	layoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	// 	layoutBinding.descriptorCount = 1;
-	// 	layoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-		
-	// 	VkDescriptorSetLayoutCreateInfo descriptorLayoutCreateInfo = {};
-	// 	descriptorLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-	// 	descriptorLayoutCreateInfo.bindingCount = 1;
-	// 	descriptorLayoutCreateInfo.pBindings = &layoutBinding;
-
-	// 	if (vkCreateDescriptorSetLayout(device->logical, &descriptorLayoutCreateInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS) {
-	// 		std::cerr << "failed to create descriptor layout" << std::endl;
-	// 		exit(1);
-	// 	} else {
-	// 		std::cout << "created descriptor layout" << std::endl;
-	// 	}
-
-	// 	VkPipelineLayoutCreateInfo layoutCreateInfo = {};
-	// 	layoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-	// 	layoutCreateInfo.setLayoutCount = 1;
-	// 	layoutCreateInfo.pSetLayouts = &descriptorSetLayout;
-
-	// 	if (vkCreatePipelineLayout(device->logical, &layoutCreateInfo, nullptr, &pipelineLayout) != VK_SUCCESS) {
-	// 		std::cerr << "failed to create pipeline layout" << std::endl;
-	// 		exit(1);
-	// 	} else {
-	// 		std::cout << "created pipeline layout" << std::endl;
-	// 	}
-
-	// 	// Create the graphics pipeline
-	// 	VkGraphicsPipelineCreateInfo pipelineCreateInfo = {};
-	// 	pipelineCreateInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-	// 	pipelineCreateInfo.stageCount = 2;
-	// 	pipelineCreateInfo.pStages = shaderStages;
-	// 	pipelineCreateInfo.pVertexInputState = &vertexInputCreateInfo;
-	// 	pipelineCreateInfo.pInputAssemblyState = &inputAssemblyCreateInfo;
-	// 	pipelineCreateInfo.pViewportState = &viewportCreateInfo;
-	// 	pipelineCreateInfo.pRasterizationState = &rasterizationCreateInfo;
-	// 	pipelineCreateInfo.pMultisampleState = &multisampleCreateInfo;
-	// 	pipelineCreateInfo.pColorBlendState = &colorBlendCreateInfo;
-	// 	pipelineCreateInfo.layout = pipelineLayout;
-	// 	pipelineCreateInfo.renderPass = renderPass->renderPass;
-	// 	pipelineCreateInfo.subpass = 0;
-	// 	pipelineCreateInfo.basePipelineHandle = VK_NULL_HANDLE;
-	// 	pipelineCreateInfo.basePipelineIndex = -1;
-
-	// 	if (vkCreateGraphicsPipelines(device->logical, VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &graphicsPipeline) != VK_SUCCESS) {
-	// 		std::cerr << "failed to create graphics pipeline" << std::endl;
-	// 		exit(1);
-	// 	} else {
-	// 		std::cout << "created graphics pipeline" << std::endl;
-	// 	}
-
-	// 	// No longer necessary
-	// 	// vkDestroyShaderModule(device->logical, vertexShaderModule, nullptr);
-	// 	// vkDestroyShaderModule(device->logical, fragmentShaderModule, nullptr);
-	// }
-
-	// void createDescriptorPool() {
-	// 	// This describes how many descriptor sets we'll create from this pool for each type
-	// 	VkDescriptorPoolSize typeCount;
-	// 	typeCount.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	// 	typeCount.descriptorCount = 1;
-
-	// 	VkDescriptorPoolCreateInfo createInfo = {};
-	// 	createInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	// 	createInfo.poolSizeCount = 1;
-	// 	createInfo.pPoolSizes = &typeCount;
-	// 	createInfo.maxSets = 1;
-		
-	// 	if (vkCreateDescriptorPool(device->logical, &createInfo, nullptr, &descriptorPool) != VK_SUCCESS) {
-	// 		std::cerr << "failed to create descriptor pool" << std::endl;
-	// 		exit(1);
-	// 	} else {
-	// 		std::cout << "created descriptor pool" << std::endl;
-	// 	}
-	// }
-
 	void createDescriptorSet() {
 		// There needs to be one descriptor set per binding point in the shader
 		VkDescriptorSetAllocateInfo allocInfo = {};
@@ -568,32 +345,33 @@ private:
 
 	void createCommandBuffers() {
 		// Allocate graphics command buffers
-		graphicsCommandBuffers.resize(swapChain->images.size());
+		// graphicsCommandBuffers.resize(swapChain->images.size());
+		graphicsCommandBuffers.clear();
 
-		VkCommandBufferAllocateInfo allocInfo = {};
-		allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-		allocInfo.commandPool = device->commandPool;
-		allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-		allocInfo.commandBufferCount = (uint32_t) swapChain->images.size();
+		// VkCommandBufferAllocateInfo allocInfo = {};
+		// allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+		// allocInfo.commandPool = device->commandPool;
+		// allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+		// allocInfo.commandBufferCount = (uint32_t) swapChain->images.size();
 
-		if (vkAllocateCommandBuffers(device->logical, &allocInfo, graphicsCommandBuffers.data()) != VK_SUCCESS) {
-			std::cerr << "failed to allocate graphics command buffers" << std::endl;
-			exit(1);
-		} else {
-			std::cout << "allocated graphics command buffers" << std::endl;
-		}
+		// if (vkAllocateCommandBuffers(device->logical, &allocInfo, graphicsCommandBuffers.data()) != VK_SUCCESS) {
+		// 	std::cerr << "failed to allocate graphics command buffers" << std::endl;
+		// 	exit(1);
+		// } else {
+		// 	std::cout << "allocated graphics command buffers" << std::endl;
+		// }
 
-		// Prepare data for recording command buffers
-		VkCommandBufferBeginInfo beginInfo = {};
-		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+		// // Prepare data for recording command buffers
+		// VkCommandBufferBeginInfo beginInfo = {};
+		// beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		// beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
 
-		VkImageSubresourceRange subResourceRange = {};
-		subResourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		subResourceRange.baseMipLevel = 0;
-		subResourceRange.levelCount = 1;
-		subResourceRange.baseArrayLayer = 0;
-		subResourceRange.layerCount = 1;
+		// VkImageSubresourceRange subResourceRange = {};
+		// subResourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		// subResourceRange.baseMipLevel = 0;
+		// subResourceRange.levelCount = 1;
+		// subResourceRange.baseArrayLayer = 0;
+		// subResourceRange.layerCount = 1;
 
 		VkClearValue clearColor = {
 			{ 0.1f, 0.1f, 0.1f, 1.0f } // R, G, B, A
@@ -601,78 +379,93 @@ private:
 
 		// Record command buffer for each swap image
 		for (size_t i = 0; i < swapChain->images.size(); i++) {
-			vkBeginCommandBuffer(graphicsCommandBuffers[i], &beginInfo);
-			std::cout << "recording command buffer #" << i << std::endl;
+			graphicsCommandBuffers.emplace_back(new CommandBuffer(*device,
+				CmdPresent2GraphicsBarrier(*device, *swapChain, swapChain->images[i]),
+				CmdBeginRenderPass(*swapChain, *renderPass, framebuffers[i], clearColor),
+				CmdBindDescriptorSets(*graphicsPipeline, descriptorSet),
+				CmdBindPipeline(*graphicsPipeline),
+				CmdBindVertexBuffer(*vertexBuffer),
+				CmdBindIndexBuffer(*indexBuffer),
+				CmdDrawIndexed(3, 1, 0, 0, 0),
+				CmdEndRenderPass(),
+				CmdGraphics2PresentBarrier(*device, *swapChain, swapChain->images[i]))
+			);
+		}
+		for (size_t i = 0; i < graphicsCommandBuffers.size(); i++) {
+			graphicsCommandBuffers[i]->use(VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT);
 
-			// If present queue family and graphics queue family are different, then a barrier is necessary
-			// The barrier is also needed initially to transition the image to the present layout
-			VkImageMemoryBarrier presentToDrawBarrier = {};
-			presentToDrawBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-			presentToDrawBarrier.srcAccessMask = 0;
-			presentToDrawBarrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-			presentToDrawBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-			presentToDrawBarrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+			// vkBeginCommandBuffer(graphicsCommandBuffers[i], &beginInfo);
+			// std::cout << "recording command buffer #" << i << std::endl;
 
-			if (device->presentQueueFamily != device->graphicsQueueFamily) {
-				presentToDrawBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-				presentToDrawBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-			} else {
-				presentToDrawBarrier.srcQueueFamilyIndex = device->presentQueueFamily;
-				presentToDrawBarrier.dstQueueFamilyIndex = device->graphicsQueueFamily;
-			}
+			// // If present queue family and graphics queue family are different, then a barrier is necessary
+			// // The barrier is also needed initially to transition the image to the present layout
+			// VkImageMemoryBarrier presentToDrawBarrier = {};
+			// presentToDrawBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+			// presentToDrawBarrier.srcAccessMask = 0;
+			// presentToDrawBarrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+			// presentToDrawBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+			// presentToDrawBarrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
-			presentToDrawBarrier.image = swapChain->images[i];
-			presentToDrawBarrier.subresourceRange = subResourceRange;
+			// if (device->presentQueueFamily != device->graphicsQueueFamily) {
+			// 	presentToDrawBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			// 	presentToDrawBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			// } else {
+			// 	presentToDrawBarrier.srcQueueFamilyIndex = device->presentQueueFamily;
+			// 	presentToDrawBarrier.dstQueueFamilyIndex = device->graphicsQueueFamily;
+			// }
 
-			vkCmdPipelineBarrier(graphicsCommandBuffers[i], VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, nullptr, 0, nullptr, 1, &presentToDrawBarrier);
-			std::cout << "transitioned image #" << i << " from present to draw layout" << std::endl;
+			// presentToDrawBarrier.image = swapChain->images[i];
+			// presentToDrawBarrier.subresourceRange = subResourceRange;
 
-			VkRenderPassBeginInfo renderPassBeginInfo = {};
-			renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-			renderPassBeginInfo.renderPass = renderPass->renderPass;
-			renderPassBeginInfo.framebuffer = framebuffers[i].framebuffer;
-			renderPassBeginInfo.renderArea.offset.x = 0;
-			renderPassBeginInfo.renderArea.offset.y = 0;
-			renderPassBeginInfo.renderArea.extent = swapChain->extent;
-			renderPassBeginInfo.clearValueCount = 1;
-			renderPassBeginInfo.pClearValues = &clearColor;
+			// vkCmdPipelineBarrier(graphicsCommandBuffers[i], VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, nullptr, 0, nullptr, 1, &presentToDrawBarrier);
+			// std::cout << "transitioned image #" << i << " from present to draw layout" << std::endl;
 
-			vkCmdBeginRenderPass(graphicsCommandBuffers[i], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
-			std::cout << "started render pass for command buffer #" << i << std::endl;
-			vkCmdBindDescriptorSets(graphicsCommandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline->pipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
-			std::cout << "bound descriptor set for command buffer #" << i << std::endl;
-			vkCmdBindPipeline(graphicsCommandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline->pipeline);
-			std::cout << "bound graphics pipeline for command buffer #" << i << std::endl;
-			VkDeviceSize offset = 0;
-			vkCmdBindVertexBuffers(graphicsCommandBuffers[i], 0, 1, &vertexBuffer->buffer, &offset);
-			std::cout << "bound vertex buffer for command buffer #" << i << std::endl;
-			vkCmdBindIndexBuffer(graphicsCommandBuffers[i], indexBuffer->buffer, 0, VK_INDEX_TYPE_UINT32);
-			std::cout << "bound index buffer for command buffer #" << i << std::endl;
-			vkCmdDrawIndexed(graphicsCommandBuffers[i], 3, 1, 0, 0, 0);
-			std::cout << "issued draw command for command buffer #" << i << std::endl;
-			vkCmdEndRenderPass(graphicsCommandBuffers[i]);
-			std::cout << "ended render pass for command buffer #" << i << std::endl;
-			// If present and graphics queue families differ, then another barrier is required
-			if (device->presentQueueFamily != device->graphicsQueueFamily) {
-				VkImageMemoryBarrier drawToPresentBarrier = {};
-				drawToPresentBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-				drawToPresentBarrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-				drawToPresentBarrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
-				drawToPresentBarrier.oldLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-				drawToPresentBarrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-				drawToPresentBarrier.srcQueueFamilyIndex = device->graphicsQueueFamily;
-				drawToPresentBarrier.dstQueueFamilyIndex = device->presentQueueFamily;
-				drawToPresentBarrier.image = swapChain->images[i];
-				drawToPresentBarrier.subresourceRange = subResourceRange;
+			// VkRenderPassBeginInfo renderPassBeginInfo = {};
+			// renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+			// renderPassBeginInfo.renderPass = renderPass->renderPass;
+			// renderPassBeginInfo.framebuffer = framebuffers[i].framebuffer;
+			// renderPassBeginInfo.renderArea.offset.x = 0;
+			// renderPassBeginInfo.renderArea.offset.y = 0;
+			// renderPassBeginInfo.renderArea.extent = swapChain->extent;
+			// renderPassBeginInfo.clearValueCount = 1;
+			// renderPassBeginInfo.pClearValues = &clearColor;
 
-				vkCmdPipelineBarrier(graphicsCommandBuffers[i], VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, nullptr, 0, nullptr, 1, &drawToPresentBarrier);
-				std::cout << "transitioned image #" << i << " from draw to present layout" << std::endl;
-			}
+			// vkCmdBeginRenderPass(graphicsCommandBuffers[i], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+			// std::cout << "started render pass for command buffer #" << i << std::endl;
+			// vkCmdBindDescriptorSets(graphicsCommandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline->pipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
+			// std::cout << "bound descriptor set for command buffer #" << i << std::endl;
+			// vkCmdBindPipeline(graphicsCommandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline->pipeline);
+			// std::cout << "bound graphics pipeline for command buffer #" << i << std::endl;
+			// VkDeviceSize offset = 0;
+			// vkCmdBindVertexBuffers(graphicsCommandBuffers[i], 0, 1, &vertexBuffer->buffer, &offset);
+			// std::cout << "bound vertex buffer for command buffer #" << i << std::endl;
+			// vkCmdBindIndexBuffer(graphicsCommandBuffers[i], indexBuffer->buffer, 0, VK_INDEX_TYPE_UINT32);
+			// std::cout << "bound index buffer for command buffer #" << i << std::endl;
+			// vkCmdDrawIndexed(graphicsCommandBuffers[i], 3, 1, 0, 0, 0);
+			// std::cout << "issued draw command for command buffer #" << i << std::endl;
+			// vkCmdEndRenderPass(graphicsCommandBuffers[i]);
+			// std::cout << "ended render pass for command buffer #" << i << std::endl;
+			// // If present and graphics queue families differ, then another barrier is required
+			// if (device->presentQueueFamily != device->graphicsQueueFamily) {
+			// 	VkImageMemoryBarrier drawToPresentBarrier = {};
+			// 	drawToPresentBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+			// 	drawToPresentBarrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+			// 	drawToPresentBarrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+			// 	drawToPresentBarrier.oldLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+			// 	drawToPresentBarrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+			// 	drawToPresentBarrier.srcQueueFamilyIndex = device->graphicsQueueFamily;
+			// 	drawToPresentBarrier.dstQueueFamilyIndex = device->presentQueueFamily;
+			// 	drawToPresentBarrier.image = swapChain->images[i];
+			// 	drawToPresentBarrier.subresourceRange = subResourceRange;
 
-			if (vkEndCommandBuffer(graphicsCommandBuffers[i]) != VK_SUCCESS) {
-				std::cerr << "failed to record command buffer" << std::endl;
-				exit(1);
-			}
+			// 	vkCmdPipelineBarrier(graphicsCommandBuffers[i], VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, nullptr, 0, nullptr, 1, &drawToPresentBarrier);
+			// 	std::cout << "transitioned image #" << i << " from draw to present layout" << std::endl;
+			// }
+
+			// if (vkEndCommandBuffer(graphicsCommandBuffers[i]) != VK_SUCCESS) {
+			// 	std::cerr << "failed to record command buffer" << std::endl;
+			// 	exit(1);
+			// }
 			std::cout << "recorded command buffer #" << i << std::endl;
 		}
 
@@ -711,7 +504,7 @@ private:
 		submitInfo.pWaitDstStageMask = &waitDstStageMask;
 
 		submitInfo.commandBufferCount = 1;
-		submitInfo.pCommandBuffers = &graphicsCommandBuffers[imageIndex];
+		submitInfo.pCommandBuffers = &graphicsCommandBuffers[imageIndex]->commandBuffer;
 
 		if (vkQueueSubmit(device->graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE) != VK_SUCCESS) {
 			std::cerr << "failed to submit draw command buffer" << std::endl;

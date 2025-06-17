@@ -166,5 +166,6 @@ struct GraphicsPipeline
     {
         vkDestroyPipeline(device.logical, pipeline, nullptr);
 		vkDestroyDescriptorSetLayout(device.logical, descriptorSetLayout, nullptr);
+        //VkPipelineLayout is destroyed by the device destructor
     }
 };

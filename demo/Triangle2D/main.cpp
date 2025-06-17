@@ -206,7 +206,6 @@ private:
 	void cleanup(bool fullClean) {
 		vkDeviceWaitIdle(device->logical);
 
-		// vkFreeCommandBuffers(device->logical, device->commandPool, (uint32_t) graphicsCommandBuffers.size(), graphicsCommandBuffers.data());
 		graphicsCommandBuffers.clear();
 		graphicsPipeline.reset();
 		renderPass.reset();
@@ -344,34 +343,7 @@ private:
 	}
 
 	void createCommandBuffers() {
-		// Allocate graphics command buffers
-		// graphicsCommandBuffers.resize(swapChain->images.size());
-		graphicsCommandBuffers.clear();
-
-		// VkCommandBufferAllocateInfo allocInfo = {};
-		// allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-		// allocInfo.commandPool = device->commandPool;
-		// allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-		// allocInfo.commandBufferCount = (uint32_t) swapChain->images.size();
-
-		// if (vkAllocateCommandBuffers(device->logical, &allocInfo, graphicsCommandBuffers.data()) != VK_SUCCESS) {
-		// 	std::cerr << "failed to allocate graphics command buffers" << std::endl;
-		// 	exit(1);
-		// } else {
-		// 	std::cout << "allocated graphics command buffers" << std::endl;
-		// }
-
-		// // Prepare data for recording command buffers
-		// VkCommandBufferBeginInfo beginInfo = {};
-		// beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		// beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
-
-		// VkImageSubresourceRange subResourceRange = {};
-		// subResourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		// subResourceRange.baseMipLevel = 0;
-		// subResourceRange.levelCount = 1;
-		// subResourceRange.baseArrayLayer = 0;
-		// subResourceRange.layerCount = 1;
+		graphicsCommandBuffers.resize(swapChain->images.size());
 
 		VkClearValue clearColor = {
 			{ 0.1f, 0.1f, 0.1f, 1.0f } // R, G, B, A
@@ -379,7 +351,7 @@ private:
 
 		// Record command buffer for each swap image
 		for (size_t i = 0; i < swapChain->images.size(); i++) {
-			graphicsCommandBuffers.emplace_back(new CommandBuffer(*device,
+			graphicsCommandBuffers[i].reset(new CommandBuffer(*device,
 				CmdPresent2GraphicsBarrier(*device, *swapChain, swapChain->images[i]),
 				CmdBeginRenderPass(*swapChain, *renderPass, framebuffers[i], clearColor),
 				CmdBindDescriptorSets(*graphicsPipeline, descriptorSet),
@@ -393,79 +365,6 @@ private:
 		}
 		for (size_t i = 0; i < graphicsCommandBuffers.size(); i++) {
 			graphicsCommandBuffers[i]->use(VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT);
-
-			// vkBeginCommandBuffer(graphicsCommandBuffers[i], &beginInfo);
-			// std::cout << "recording command buffer #" << i << std::endl;
-
-			// // If present queue family and graphics queue family are different, then a barrier is necessary
-			// // The barrier is also needed initially to transition the image to the present layout
-			// VkImageMemoryBarrier presentToDrawBarrier = {};
-			// presentToDrawBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-			// presentToDrawBarrier.srcAccessMask = 0;
-			// presentToDrawBarrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-			// presentToDrawBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-			// presentToDrawBarrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-
-			// if (device->presentQueueFamily != device->graphicsQueueFamily) {
-			// 	presentToDrawBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-			// 	presentToDrawBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-			// } else {
-			// 	presentToDrawBarrier.srcQueueFamilyIndex = device->presentQueueFamily;
-			// 	presentToDrawBarrier.dstQueueFamilyIndex = device->graphicsQueueFamily;
-			// }
-
-			// presentToDrawBarrier.image = swapChain->images[i];
-			// presentToDrawBarrier.subresourceRange = subResourceRange;
-
-			// vkCmdPipelineBarrier(graphicsCommandBuffers[i], VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, nullptr, 0, nullptr, 1, &presentToDrawBarrier);
-			// std::cout << "transitioned image #" << i << " from present to draw layout" << std::endl;
-
-			// VkRenderPassBeginInfo renderPassBeginInfo = {};
-			// renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-			// renderPassBeginInfo.renderPass = renderPass->renderPass;
-			// renderPassBeginInfo.framebuffer = framebuffers[i].framebuffer;
-			// renderPassBeginInfo.renderArea.offset.x = 0;
-			// renderPassBeginInfo.renderArea.offset.y = 0;
-			// renderPassBeginInfo.renderArea.extent = swapChain->extent;
-			// renderPassBeginInfo.clearValueCount = 1;
-			// renderPassBeginInfo.pClearValues = &clearColor;
-
-			// vkCmdBeginRenderPass(graphicsCommandBuffers[i], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
-			// std::cout << "started render pass for command buffer #" << i << std::endl;
-			// vkCmdBindDescriptorSets(graphicsCommandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline->pipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
-			// std::cout << "bound descriptor set for command buffer #" << i << std::endl;
-			// vkCmdBindPipeline(graphicsCommandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline->pipeline);
-			// std::cout << "bound graphics pipeline for command buffer #" << i << std::endl;
-			// VkDeviceSize offset = 0;
-			// vkCmdBindVertexBuffers(graphicsCommandBuffers[i], 0, 1, &vertexBuffer->buffer, &offset);
-			// std::cout << "bound vertex buffer for command buffer #" << i << std::endl;
-			// vkCmdBindIndexBuffer(graphicsCommandBuffers[i], indexBuffer->buffer, 0, VK_INDEX_TYPE_UINT32);
-			// std::cout << "bound index buffer for command buffer #" << i << std::endl;
-			// vkCmdDrawIndexed(graphicsCommandBuffers[i], 3, 1, 0, 0, 0);
-			// std::cout << "issued draw command for command buffer #" << i << std::endl;
-			// vkCmdEndRenderPass(graphicsCommandBuffers[i]);
-			// std::cout << "ended render pass for command buffer #" << i << std::endl;
-			// // If present and graphics queue families differ, then another barrier is required
-			// if (device->presentQueueFamily != device->graphicsQueueFamily) {
-			// 	VkImageMemoryBarrier drawToPresentBarrier = {};
-			// 	drawToPresentBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-			// 	drawToPresentBarrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-			// 	drawToPresentBarrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
-			// 	drawToPresentBarrier.oldLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-			// 	drawToPresentBarrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-			// 	drawToPresentBarrier.srcQueueFamilyIndex = device->graphicsQueueFamily;
-			// 	drawToPresentBarrier.dstQueueFamilyIndex = device->presentQueueFamily;
-			// 	drawToPresentBarrier.image = swapChain->images[i];
-			// 	drawToPresentBarrier.subresourceRange = subResourceRange;
-
-			// 	vkCmdPipelineBarrier(graphicsCommandBuffers[i], VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, nullptr, 0, nullptr, 1, &drawToPresentBarrier);
-			// 	std::cout << "transitioned image #" << i << " from draw to present layout" << std::endl;
-			// }
-
-			// if (vkEndCommandBuffer(graphicsCommandBuffers[i]) != VK_SUCCESS) {
-			// 	std::cerr << "failed to record command buffer" << std::endl;
-			// 	exit(1);
-			// }
 			std::cout << "recorded command buffer #" << i << std::endl;
 		}
 

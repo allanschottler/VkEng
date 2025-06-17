@@ -14,6 +14,7 @@ struct Device {
     uint32_t graphicsQueueFamily;
 	uint32_t presentQueueFamily;
 	VkCommandPool commandPool;
+    VkDescriptorPool descriptorPool;
 
     Device(Instance& instance, VkSurfaceKHR& windowSurface)
         : instance(instance)
@@ -81,10 +82,29 @@ struct Device {
 		} else {
 			std::cout << "created command pool for graphics queue family" << std::endl;
 		}
+
+		// This describes how many descriptor sets we'll create from this pool for each type
+		VkDescriptorPoolSize typeCount;
+		typeCount.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		typeCount.descriptorCount = 1;
+
+		VkDescriptorPoolCreateInfo createInfo = {};
+		createInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+		createInfo.poolSizeCount = 1;
+		createInfo.pPoolSizes = &typeCount;
+		createInfo.maxSets = 1;
+		
+		if (vkCreateDescriptorPool(logical, &createInfo, nullptr, &descriptorPool) != VK_SUCCESS) {
+			std::cerr << "failed to create descriptor pool" << std::endl;
+			exit(1);
+		} else {
+			std::cout << "created descriptor pool" << std::endl;
+		}
     }
 
     ~Device() {
 		vkDestroyCommandPool(logical, commandPool, nullptr);
+		vkDestroyDescriptorPool(logical, descriptorPool, nullptr);
         vkDestroyDevice(logical, nullptr);
     }
 

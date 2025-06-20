@@ -3,6 +3,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include "vkeng.hpp"
 
+#include "util/readObj.hpp"
 #include <iostream>
 #include <fstream>
 #include <vector>
@@ -34,10 +35,10 @@ VkBool32 debugCallback(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT o
 }
 
 // Vertex layout
-struct Vertex {
-	glm::vec3 pos;
-	glm::vec3 color;
-};
+// struct Vertex {
+// 	glm::vec3 pos;
+// 	glm::vec3 color;
+// };
 
 bool windowResized = false;
 
@@ -89,7 +90,7 @@ private:
 	// VkDeviceMemory vertexBufferMemory;
 	// VkBuffer indexBuffer;
 	// VkDeviceMemory indexBufferMemory;
-	std::unique_ptr<DeviceBuffer<Vertex>> vertexBuffer;
+	std::unique_ptr<DeviceBuffer<glm::vec3>> vertexBuffer;
 	std::unique_ptr<DeviceBuffer<uint32_t>> indexBuffer;
 	VkVertexInputBindingDescription vertexBindingDescription;
 	std::vector<VkVertexInputAttributeDescription> vertexAttributeDescriptions;
@@ -248,20 +249,14 @@ private:
 		}
 	}
 	
-	void createVertexBuffer() {
-		// Setup vertices
-		std::vector<Vertex> vertices = {
-			{ { -0.5f, -0.5f,  0.0f }, { 1.0f, 0.0f, 0.0f } },
-			{ { -0.5f,  0.5f,  0.0f }, { 0.0f, 1.0f, 0.0f } },
-			{ {  0.5f,  0.5f,  0.0f }, { 0.0f, 0.0f, 1.0f } }
-		};
-		// Setup indices
-		std::vector<uint32_t> indices = { 0, 1, 2 };
+	void createVertexBuffer() {		
+		auto obj = readObj2("models/IronMan.obj");
+		obj.merge(readObj2("models/trees9.obj"));
 		
-		auto stage_vertices = StagingBuffer<Vertex>(*device, vertices);
-		vertexBuffer = std::make_unique<DeviceBuffer<Vertex>>(*device, vertices.size(), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
-		auto stage_indices = StagingBuffer<uint32_t>(*device, indices);
-		indexBuffer = std::make_unique<DeviceBuffer<uint32_t>>(*device, indices.size(), VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
+		auto stage_vertices = StagingBuffer<glm::vec3>(*device, obj.positions);
+		vertexBuffer = std::make_unique<DeviceBuffer<glm::vec3>>(*device, obj.positions.size(), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+		auto stage_indices = StagingBuffer<uint32_t>(*device, obj.positionIndices);
+		indexBuffer = std::make_unique<DeviceBuffer<uint32_t>>(*device, obj.positionIndices.size(), VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
 		
 		auto copyCommandBuffer = CommandBuffer(*device,
 			CmdCopyBuffer(stage_vertices, *vertexBuffer), 
@@ -279,32 +274,34 @@ private:
 
 		// Binding and attribute descriptions
 		vertexBindingDescription.binding = 0;
-		vertexBindingDescription.stride = sizeof(vertices[0]);
+		vertexBindingDescription.stride = sizeof(obj.positions[0]);
 		vertexBindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
-		// vec2 position
-		vertexAttributeDescriptions.resize(2);
+		// vec3 position
+		vertexAttributeDescriptions.resize(1);
+		// vertexAttributeDescriptions.resize(2);
 		vertexAttributeDescriptions[0].binding = 0;
 		vertexAttributeDescriptions[0].location = 0;
 		vertexAttributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
 		
 		// vec3 color
-		vertexAttributeDescriptions[1].binding = 0;
-		vertexAttributeDescriptions[1].location = 1;
-		vertexAttributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-		vertexAttributeDescriptions[1].offset = sizeof(float) * 3;
+		// vertexAttributeDescriptions[1].binding = 0;
+		// vertexAttributeDescriptions[1].location = 1;
+		// vertexAttributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+		// vertexAttributeDescriptions[1].offset = sizeof(float) * 3;
 	}
 
 	void updateUniformData() {
 		auto timeNow = std::chrono::high_resolution_clock::now();
 		long long millis = std::chrono::duration_cast<std::chrono::milliseconds>(timeStart - timeNow).count();
-		float angle = (millis % 4000) / 4000.0f * glm::radians(360.f);
+		float angle = (millis % 40000) / 40000.0f * glm::radians(360.f);
 
 		glm::mat4 modelMatrix{1};
-		modelMatrix = glm::rotate(modelMatrix, angle, glm::vec3(0, 0, 1));
-		modelMatrix = glm::translate(modelMatrix, glm::vec3(0.5f / 3.0f, -0.5f / 3.0f, 0.0f));
-		auto viewMatrix = glm::lookAt(glm::vec3(1, 1, 1), glm::vec3(0, 0, 0), glm::vec3(0, 0, -1));
-		auto projMatrix = glm::perspective(glm::radians(70.f), swapChain->extent.width / (float) swapChain->extent.height, 0.1f, 10.0f);
+		modelMatrix = glm::rotate(modelMatrix, angle, glm::vec3(0, 1, 0));
+		modelMatrix = glm::translate(modelMatrix, glm::vec3(0, -150, 0));
+		// modelMatrix = glm::scale(modelMatrix, glm::vec3(.5f, .5f, .5f));
+		auto viewMatrix = glm::lookAt(glm::vec3(250, 250, 250), glm::vec3(0, 0, 0), glm::vec3(0, -1, 0));
+		auto projMatrix = glm::perspective(glm::radians(70.f), swapChain->extent.width / (float) swapChain->extent.height, 0.01f, 1000.0f);
 
 		uniformBufferData.transformationMatrix = projMatrix * viewMatrix * modelMatrix;
 		uniformBuffer->map(uniformBufferData);
@@ -358,7 +355,7 @@ private:
 				CmdBindPipeline(*graphicsPipeline),
 				CmdBindVertexBuffer(*vertexBuffer),
 				CmdBindIndexBuffer(*indexBuffer),
-				CmdDrawIndexed(3, 1, 0, 0, 0),
+				CmdDrawIndexed(static_cast<uint32_t>(indexBuffer->size), 1, 0, 0, 0),
 				CmdEndRenderPass(),
 				CmdGraphics2PresentBarrier(*device, *swapChain, swapChain->images[i]))
 			);

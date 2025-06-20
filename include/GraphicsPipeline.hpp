@@ -23,7 +23,7 @@ struct GraphicsPipeline
 		vertexInputCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 		vertexInputCreateInfo.vertexBindingDescriptionCount = 1;
 		vertexInputCreateInfo.pVertexBindingDescriptions = &vertexBindingDescription;
-		vertexInputCreateInfo.vertexAttributeDescriptionCount = 2;
+		vertexInputCreateInfo.vertexAttributeDescriptionCount = vertexAttributeDescriptions.size();
 		vertexInputCreateInfo.pVertexAttributeDescriptions = vertexAttributeDescriptions.data();
 
 		// Describe input assembly
@@ -62,7 +62,7 @@ struct GraphicsPipeline
 		rasterizationCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
 		rasterizationCreateInfo.depthClampEnable = VK_FALSE;
 		rasterizationCreateInfo.rasterizerDiscardEnable = VK_FALSE;
-		rasterizationCreateInfo.polygonMode = VK_POLYGON_MODE_FILL;
+		rasterizationCreateInfo.polygonMode = VK_POLYGON_MODE_LINE;//VK_POLYGON_MODE_FILL;
 		rasterizationCreateInfo.cullMode = VK_CULL_MODE_BACK_BIT;
 		rasterizationCreateInfo.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
 		rasterizationCreateInfo.depthBiasEnable = VK_FALSE;

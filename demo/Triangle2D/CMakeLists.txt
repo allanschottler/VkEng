@@ -5,6 +5,10 @@ add_custom_command(TARGET Triangle2DDemo POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E copy_directory
   ${CMAKE_CURRENT_SOURCE_DIR}/shaders $<TARGET_FILE_DIR:Triangle2DDemo>/shaders) 
 
+add_custom_command(TARGET Triangle2DDemo POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy_directory
+  ${CMAKE_CURRENT_SOURCE_DIR}/models $<TARGET_FILE_DIR:Triangle2DDemo>/models) 
+
 file(GLOB SHADERS
     "${CMAKE_CURRENT_SOURCE_DIR}/shaders/*.vert"
     "${CMAKE_CURRENT_SOURCE_DIR}/shaders/*.frag"

@@ -52,6 +52,7 @@ struct Device {
 		VkPhysicalDeviceFeatures enabledFeatures = {};
 		enabledFeatures.shaderClipDistance = VK_TRUE;
 		enabledFeatures.shaderCullDistance = VK_TRUE;
+		enabledFeatures.fillModeNonSolid = VK_TRUE;
 
 		const char* deviceExtensions = VK_KHR_SWAPCHAIN_EXTENSION_NAME;
 		deviceCreateInfo.enabledExtensionCount = 1;

@@ -73,99 +73,48 @@ public:
 private:
 	GLFWwindow* window;
 
-	// VkInstance instance;
 	std::unique_ptr<Instance> instance;
 	VkSurfaceKHR windowSurface;
-	// VkPhysicalDevice physicalDevice;
 	std::unique_ptr<Device> device;
-	// VkDevice& device = device->logical;
-	// VkDebugReportCallbackEXT callback;
-	// VkQueue graphicsQueue;
-	// VkQueue presentQueue;
-	// VkPhysicalDeviceMemoryProperties deviceMemoryProperties;
 	VkSemaphore imageAvailableSemaphore;
 	VkSemaphore renderingFinishedSemaphore;
-
-	// VkBuffer vertexBuffer;
-	// VkDeviceMemory vertexBufferMemory;
-	// VkBuffer indexBuffer;
-	// VkDeviceMemory indexBufferMemory;
 	std::unique_ptr<DeviceBuffer<glm::vec3>> vertexBuffer;
 	std::unique_ptr<DeviceBuffer<uint32_t>> indexBuffer;
 	VkVertexInputBindingDescription vertexBindingDescription;
 	std::vector<VkVertexInputAttributeDescription> vertexAttributeDescriptions;
-
-	struct {
+	struct UniformData{
 		glm::mat4 transformationMatrix;
 	} uniformBufferData;
-	// VkBuffer uniformBuffer;
-	// VkDeviceMemory uniformBufferMemory;
-	std::unique_ptr<UniformBuffer<decltype(uniformBufferData)>> uniformBuffer;
-	// VkDescriptorSetLayout descriptorSetLayout;
-	// VkDescriptorPool descriptorPool;
+	std::unique_ptr<UniformBuffer<UniformData>> uniformBuffer;
 	VkDescriptorSet descriptorSet;
-
-	// VkExtent2D swapChainExtent;
-	// VkFormat swapChainFormat;
-	// VkSwapchainKHR oldSwapChain;
-	// VkSwapchainKHR swapChain;
-	// std::vector<VkImage> swapChainImages;
-	// std::vector<VkImageView> swapChainImageViews;
-	// std::vector<VkFramebuffer> swapChainFramebuffers;
-	// VkRenderPass renderPass;
 	std::unique_ptr<SwapChain> swapChain;
 	std::vector<ImageView> imageViews;
 	std::vector<Framebuffer> framebuffers;
 	std::unique_ptr<RenderPass> renderPass;
-
-	// VkPipeline graphicsPipeline;
-	// VkPipelineLayout pipelineLayout;
 	std::unique_ptr<GraphicsPipeline> graphicsPipeline;
-
-	// VkCommandPool commandPool;
-	// std::vector<VkCommandBuffer> graphicsCommandBuffers;
 	std::vector<std::unique_ptr<CommandBufferBase>> graphicsCommandBuffers;
-
-	// uint32_t graphicsQueueFamily;
-	// uint32_t presentQueueFamily;
-
 	std::chrono::high_resolution_clock::time_point timeStart;
 
 	void setupVulkan() {
-		// oldSwapChain = VK_NULL_HANDLE;
-
 		instance = std::make_unique<Instance>();
-		// createDebugCallback();
 		createWindowSurface();
-		// findPhysicalDevice();
-		// checkSwapChainSupport();
-		// findQueueFamilies();
-		// createLogicalDevice();
 		device = std::make_unique<Device>(*instance, windowSurface);
 		createSemaphores();
-		// createCommandPool();
 		createVertexBuffer();
-		uniformBuffer = std::make_unique<UniformBuffer<decltype(uniformBufferData)>>(*device, uniformBufferData);
-		// createUniformBuffer();
+		uniformBuffer = std::make_unique<UniformBuffer<UniformData>>(*device, uniformBufferData);
 		swapChain = std::make_unique<SwapChain>(*device, windowSurface, WIDTH, HEIGHT);
-		// createSwapChain();
 		renderPass = std::make_unique<RenderPass>(*device, *swapChain);
-		// createRenderPass();
 		imageViews.reserve(swapChain->images.size());
-		for(auto& image : swapChain->images)
-			imageViews.emplace_back(*device, *swapChain, image);		
-		// createImageViews();
-		framebuffers.reserve(imageViews.size());
-		for(auto& imageView : imageViews)
-			framebuffers.emplace_back(*device, *swapChain, imageView, *renderPass);
-		// createFramebuffers();
+		framebuffers.reserve(swapChain->images.size());
+		for(auto& image : swapChain->images) {
+			auto& iv = imageViews.emplace_back(*device, *swapChain, image);		
+			framebuffers.emplace_back(*device, *swapChain, iv, *renderPass);
+		}
 		auto vertexShader = VertexShader(*device, "shaders/Pass.spv");
 		auto fragmentShader = FragmentShader(*device, "shaders/SolidColor.spv");
 		graphicsPipeline = std::make_unique<GraphicsPipeline>(*device, *swapChain, *renderPass, 
 			std::move(vertexShader), std::move(fragmentShader), *uniformBuffer, 
 			vertexBindingDescription, vertexAttributeDescriptions);
-		// createGraphicsPipeline();
-		// createDescriptorPool();
 		createDescriptorSet();
 		createCommandBuffers();
 	}
@@ -195,7 +144,6 @@ private:
 			imageViews.emplace_back(*device, *swapChain, image);
 		for(auto& imageView : imageViews)
 			framebuffers.emplace_back(*device, *swapChain, imageView, *renderPass);
-		
 		auto vertexShader = VertexShader(*device, "shaders/Pass.spv");
 		auto fragmentShader = FragmentShader(*device, "shaders/SolidColor.spv");
 		graphicsPipeline = std::make_unique<GraphicsPipeline>(*device, *swapChain, *renderPass, 

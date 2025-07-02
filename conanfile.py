@@ -12,7 +12,14 @@ class Conan(ConanFile):
     
     settings = "os", "compiler", "build_type", "arch"
     generators = "CMakeDeps", "CMakeToolchain"
-    
+    exports_sources = [
+        "CMakeLists.txt",
+        "include/*",
+        "demo/*",
+        "demo/Triangle2D/*",
+        "demo/Triangle2D/shaders/*"
+    ]
+
     requires = [
         "boost/1.85.0",
         "glm/1.0.1",
@@ -35,6 +42,10 @@ class Conan(ConanFile):
         cmake.configure()
         cmake.build()
 
+    def package(self):
+        cmake = CMake(self)
+        cmake.install()
+
     def package_info(self):
-        self.cpp_info.libs = ["vkeng"]
+        self.cpp_info.includedirs = ["include"]
     

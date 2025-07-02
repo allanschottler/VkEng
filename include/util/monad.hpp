@@ -56,6 +56,12 @@ struct log_t {
 };
 
 template<class T>
+struct ostream_t {
+    std::optional<T> value;
+    std::ostream& succ{std::cout}, error{std::cerr};
+};
+
+template<class T>
 struct exceptional_t {
     exceptional_t() = default;
     exceptional_t(T value, std::string e = "") 
@@ -115,6 +121,22 @@ struct div_<log_t<T>> {
         if(b == T{}) return {std::nullopt, msg + "!! Can't divide by zero.\n\n"};
         if(b < T{}) msg += "W Negative denominator.\n";
         return {a / b, std::move(msg)};
+    }
+};
+
+template<class T>
+struct div_<ostream_t<T>> {
+    T b;
+    ostream_t<T> operator()(T a) { 
+        ostream_t<T> result;
+        std::string msg = "* Dividing " + std::to_string(a) + " by " + std::to_string(b) + ".\n";
+        result.succ << msg; 
+        if(b == T{}) {
+            result.error << "!! Can't divide by zero.\n\n";
+            return {std::nullopt};
+        }
+        if(b < T{}) result.error << "W Negative denominator.\n";
+        return {a / b};
     }
 };
 

@@ -15,3 +15,18 @@ find_package(Vulkan REQUIRED)
 
 include_directories(include)
 add_subdirectory(demo)
+
+add_library(vkeng INTERFACE)
+target_include_directories(vkeng
+  INTERFACE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
+# installs
+install(TARGETS vkeng
+  ARCHIVE DESTINATION lib
+  LIBRARY DESTINATION lib
+  RUNTIME DESTINATION bin
+)
+install(DIRECTORY include/ DESTINATION include)
+

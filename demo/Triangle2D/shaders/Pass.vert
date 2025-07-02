@@ -11,5 +11,5 @@ layout(location = 0) out vec3 fragColor;
 
 void main() {
     gl_Position = mvp.modelView * vec4(inPosition, 1.0);
-    fragColor = vec3(1); //inColor;
+    fragColor = inPosition; //inColor;
 }

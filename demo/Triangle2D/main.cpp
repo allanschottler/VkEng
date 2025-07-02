@@ -34,12 +34,6 @@ VkBool32 debugCallback(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT o
 	return VK_FALSE;
 }
 
-// Vertex layout
-// struct Vertex {
-// 	glm::vec3 pos;
-// 	glm::vec3 color;
-// };
-
 bool windowResized = false;
 
 // Note: support swap chain recreation (not only required for resized windows!)
@@ -110,8 +104,8 @@ private:
 			auto& iv = imageViews.emplace_back(*device, *swapChain, image);		
 			framebuffers.emplace_back(*device, *swapChain, iv, *renderPass);
 		}
-		auto vertexShader = VertexShader(*device, "shaders/Pass.spv");
-		auto fragmentShader = FragmentShader(*device, "shaders/SolidColor.spv");
+		auto vertexShader = VertexShader(*device, "shaders/Pass.vert.spv");
+		auto fragmentShader = FragmentShader(*device, "shaders/SolidColor.frag.spv");
 		graphicsPipeline = std::make_unique<GraphicsPipeline>(*device, *swapChain, *renderPass, 
 			std::move(vertexShader), std::move(fragmentShader), *uniformBuffer, 
 			vertexBindingDescription, vertexAttributeDescriptions);
@@ -144,8 +138,8 @@ private:
 			imageViews.emplace_back(*device, *swapChain, image);
 		for(auto& imageView : imageViews)
 			framebuffers.emplace_back(*device, *swapChain, imageView, *renderPass);
-		auto vertexShader = VertexShader(*device, "shaders/Pass.spv");
-		auto fragmentShader = FragmentShader(*device, "shaders/SolidColor.spv");
+		auto vertexShader = VertexShader(*device, "shaders/Pass.vert.spv");
+		auto fragmentShader = FragmentShader(*device, "shaders/SolidColor.frag.spv");
 		graphicsPipeline = std::make_unique<GraphicsPipeline>(*device, *swapChain, *renderPass, 
 			std::move(vertexShader), std::move(fragmentShader), *uniformBuffer, 
 			vertexBindingDescription, vertexAttributeDescriptions);
@@ -198,8 +192,9 @@ private:
 	}
 	
 	void createVertexBuffer() {		
-		auto obj = readObj2("models/IronMan.obj");
-		obj.merge(readObj2("models/trees9.obj"));
+		// auto obj = readObj2("models/IronMan.obj");
+		// obj.merge(readObj2("models/trees9.obj"));
+		auto obj = readObj("models/teapot.obj");
 		
 		auto stage_vertices = StagingBuffer<glm::vec3>(*device, obj.positions);
 		vertexBuffer = std::make_unique<DeviceBuffer<glm::vec3>>(*device, obj.positions.size(), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
@@ -246,9 +241,9 @@ private:
 
 		glm::mat4 modelMatrix{1};
 		modelMatrix = glm::rotate(modelMatrix, angle, glm::vec3(0, 1, 0));
-		modelMatrix = glm::translate(modelMatrix, glm::vec3(0, -150, 0));
+		modelMatrix = glm::translate(modelMatrix, glm::vec3(0, -1, 0));
 		// modelMatrix = glm::scale(modelMatrix, glm::vec3(.5f, .5f, .5f));
-		auto viewMatrix = glm::lookAt(glm::vec3(250, 250, 250), glm::vec3(0, 0, 0), glm::vec3(0, -1, 0));
+		auto viewMatrix = glm::lookAt(glm::vec3(3, 3, 3), glm::vec3(0, 0, 0), glm::vec3(0, -1, 0));
 		auto projMatrix = glm::perspective(glm::radians(70.f), swapChain->extent.width / (float) swapChain->extent.height, 0.01f, 1000.0f);
 
 		uniformBufferData.transformationMatrix = projMatrix * viewMatrix * modelMatrix;
